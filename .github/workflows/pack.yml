@@ -30,6 +30,7 @@ jobs:
 
     - name: 查找未构建的项目并构建它们
       run: |
+        set -e
         mkdir -p dist
         for project_dir in script/*/; do
           project_name=$(basename "$project_dir")
@@ -49,7 +50,6 @@ jobs:
             if [[ -n "$python_version" ]]; then
               echo "将Python版本设置为 $python_version"
               python -m pip install --upgrade pip
-              echo "使用python版本 $python_version"
               echo "python-version=$python_version" >> $GITHUB_ENV
             fi
 
@@ -60,24 +60,27 @@ jobs:
 
             # 根据打包平台进行操作
             if [ "$packaging_platform" == "pyinstaller" ]; then
-              # 安装 pyinstaller
               pip install pyinstaller
-
-              # 直接执行命令
               if [ -n "$command" ]; then
                 eval "$command" || { echo "执行命令失败"; exit 1; }
               else
                 echo "未提供完整的命令，构建失败。"
                 exit 1
               fi
-
+            
               # 将生成的可执行文件及相关资源打包
-              tar -czvf "$dist_file" dist/ "$(basename "$app_file" .py)"
+              if [[ -d "dist" && "$(ls -A dist)" ]]; then
+                tar -czvf "$dist_file" -C dist .
+              else
+                echo "未找到要打包的文件。"
+                exit 1
+              fi
             else
               echo "不支持的打包平台: $packaging_platform"
               exit 1
             fi
-            cd -
+          else 
+            echo "$project_name 已构建，跳过。"
           fi
         done
 
