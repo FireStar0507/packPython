@@ -15,7 +15,7 @@ jobs:
     - name: 设置Python
       uses: actions/setup-python@v4
       with:
-        python-version: 3.10  # 先设置基础Python版本，后续按项目配置调整
+        python-version: 3.8  # 先设置基础Python版本，后续按项目配置调整
 
     - name: 安装jq
       run: sudo apt-get update && sudo apt-get install -y jq
