@@ -3,7 +3,7 @@ name: 构建Python项目
 on:
   push:
     branches:
-      - main # 可根据实际情况修改触发的分支
+      - main
 
 jobs:
   build-python-projects:
@@ -12,16 +12,21 @@ jobs:
     - name: Checkout代码
       uses: actions/checkout@v3
 
+    - name: 更新系统
+      run: |
+        sudo apt-get update
+        sudo apt-get upgrade -y
+
     - name: 设置Python
       uses: actions/setup-python@v4
       with:
-        python-version: 3.8  # 先设置基础Python版本，后续按项目配置调整
+        python-version: 3.8
 
     - name: 安装jq
-      run: sudo apt-get update && sudo apt-get install -y jq
+      run: sudo apt-get install -y jq
 
     - name: 安装PyInstaller所需的系统包
-      run: sudo apt-get install -y patchelf libgl1-mesa-glx
+      run: sudo apt-get install -y patchelf libglu1-mesa
 
     - name: 查找未构建的项目并构建它们
       run: |
