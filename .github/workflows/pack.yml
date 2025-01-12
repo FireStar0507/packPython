@@ -1,33 +1,3 @@
-name: 构建Python项目
-
-on:
-  push:
-    branches:
-      - main
-
-jobs:
-  build-python-projects:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout代码
-      uses: actions/checkout@v3
-
-    - name: 更新系统
-      run: |
-        sudo apt-get update
-        sudo apt-get upgrade -y
-
-    - name: 设置Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.8
-
-    - name: 安装jq
-      run: sudo apt-get install -y jq
-
-    - name: 安装PyInstaller所需的系统包
-      run: sudo apt-get install -y patchelf libglu1-mesa
-
     - name: 查找未构建的项目并构建它们
       run: |
         mkdir -p dist
@@ -36,6 +6,9 @@ jobs:
           dist_file="${{ github.workspace }}/dist/${project_name}.tar.gz"
           if [ ! -f "$dist_file" ]; then
             cd "$project_dir"
+            echo "当前目录结构:"
+            ls -la
+            
             # 解析 set.json 获取配置信息
             packaging_platform=$(jq -r '.packaging_platform // "pyinstaller"' set.json)
             python_version=$(jq -r '.python_version // "3.8"' set.json)
@@ -47,7 +20,7 @@ jobs:
               echo "将Python版本设置为 $python_version"
               python -m pip install --upgrade pip
               echo "使用python版本 $python_version"
-              echo "::set-output name=python-version::$python_version"
+              echo "python-version=$python_version" >> $GITHUB_ENV
             fi
 
             # 安装项目依赖
@@ -55,20 +28,20 @@ jobs:
               pip install "$dep"
             done
 
-            # 根据打包平台进行操作，这里直接使用命令字符串
+            # 根据打包平台进行操作
             if [ "$packaging_platform" == "pyinstaller" ]; then
               # 安装 pyinstaller
               pip install pyinstaller
 
-              # 拼接命令并执行
+              # 直接执行命令
               if [ -n "$command" ]; then
-                eval "$command"
+                eval "$command" || { echo "执行命令失败"; exit 1; }
               else
                 echo "未提供完整的命令，构建失败。"
                 exit 1
               fi
 
-              # 将生成的可执行文件及相关资源打包（这里简单示例，可能需更细致调整）
+              # 将生成的可执行文件及相关资源打包
               tar -czvf "$dist_file" dist/ "$(basename "$app_file" .py)"
             else
               echo "不支持的打包平台: $packaging_platform"
@@ -77,11 +50,3 @@ jobs:
             cd -
           fi
         done
-
-    - name: 添加和提交更改
-      run: |
-        git config --global user.name "FireStar0507"
-        git config --global user.email "18064625480@163.com"
-        git add dist
-        git commit -m "自动构建和更新 dist 文件夹" || true
-        git push origin main
