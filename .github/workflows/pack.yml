@@ -1,0 +1,94 @@
+name: 构建Python项目
+
+on:
+  push:
+    branches:
+      - main # 可根据实际情况修改触发的分支
+
+jobs:
+  build-python-projects:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout代码
+      uses: actions/checkout@v3
+
+    - name: 设置Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.10  # 先设置基础Python版本，后续按项目配置调整
+
+    - name: 安装jq
+      run: sudo apt-get update && sudo apt-get install -y jq
+
+    - name: 安装PyInstaller所需的系统包
+      run: sudo apt-get install -y patchelf libgl1-mesa-glx
+
+    - name: 查找未构建的项目并构建它们
+      run: |
+        mkdir -p dist
+        for project_dir in script/*/; do
+          project_name=$(basename $project_dir)
+          dist_file="${{ github.workspace }}/dist/${project_name}.tar.gz"
+          if [! -f "$dist_file" ]; then
+            cd $project_dir
+            # 解析 set.json 获取配置信息
+            packaging_platform=$(cat set.json | jq -r '.packaging_platform')
+            python_version=$(cat set.json | jq -r '.python_version')
+            python_dependencies=$(cat set.json | jq -r '.python_dependencies[]')
+            special_parameters=$(cat set.json | jq -r '.special_parameters')
+            # 更新Python环境到指定版本
+            if [[ "$python_version"!= "" ]]; then
+              echo "将Python版本设置为 $python_version"
+              python -m pip install --upgrade pip
+              actions/setup-python@v4 --python-version $python_version
+            fi
+            # 安装项目依赖
+            for dep in $python_dependencies; do
+              pip install $dep
+            done
+            # 根据打包平台进行操作，这里针对 pyinstaller
+            if [ "$packaging_platform" == "pyinstaller" ]; then
+              # 安装 pyinstaller
+              pip install pyinstaller
+              # 解析 pyinstaller 相关特殊参数
+              pyinstaller_onefile=$(echo $special_parameters | jq -r '.pyinstaller.onefile')
+              pyinstaller_name=$(echo $special_parameters | jq -r '.pyinstaller.name')
+              pyinstaller_add_data=$(echo $special_parameters | jq -r '.pyinstaller.add_data[]')
+              pyinstaller_hidden_imports=$(echo $special_parameters | jq -r '.pyinstaller.hidden_imports[]')
+              app_file=$(ls *.py)  # 获取项目中的Python脚本文件，可优化判断逻辑
+              # 构建 pyinstaller 命令参数列表
+              pyinstaller_args=()
+              if [ "$pyinstaller_onefile" == "true" ]; then
+                pyinstaller_args+=("--onefile")
+              fi
+              if [ "$pyinstaller_name"!= "" ]; then
+                pyinstaller_args+=("--name" "$pyinstaller_name")
+              fi
+              for data in $pyinstaller_add_data; do
+                src=$(echo $data | jq -r '.src')
+                dest=$(echo $data | jq -r '.dest')
+                pyinstaller_args+=("--add-data" "$src:$dest")
+              fi
+              for hidden_import in $pyinstaller_hidden_imports; do
+                pyinstaller_args+=("--hidden-import" "$hidden_import")
+              fi
+              pyinstaller_args+=("$app_file")
+              # 运行 pyinstaller 进行打包
+              pyinstaller "${pyinstaller_args[@]}"
+              # 将生成的可执行文件及相关资源打包（这里简单示例，可能需更细致调整）
+              tar -czvf $dist_file dist/ $(basename $app_file.py)
+            else
+              echo "不支持的打包平台: $packaging_platform"
+              exit 1
+            fi
+            cd -
+          fi
+        done
+
+    - name: 添加和提交更改
+      run: |        
+        git config --global user.name "FireStar0507"
+        git config --global user.email "18064625480@163.com"
+        git add dist
+        git commit -m "自动构建和更新 dist 文件夹" || true
+        git push origin main
