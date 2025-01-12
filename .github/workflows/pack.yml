@@ -1,3 +1,33 @@
+name: 构建Python项目
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-python-projects:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout代码
+      uses: actions/checkout@v3
+
+    - name: 更新系统
+      run: |
+        sudo apt-get update
+        sudo apt-get upgrade -y
+
+    - name: 设置Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.8
+
+    - name: 安装jq
+      run: sudo apt-get install -y jq
+
+    - name: 安装PyInstaller所需的系统包
+      run: sudo apt-get install -y patchelf libglu1-mesa
+
     - name: 查找未构建的项目并构建它们
       run: |
         mkdir -p dist
@@ -50,3 +80,11 @@
             cd -
           fi
         done
+
+    - name: 添加和提交更改
+      run: |
+        git config --global user.name "FireStar0507"
+        git config --global user.email "18064625480@163.com"
+        git add dist
+        git commit -m "自动构建和更新 dist 文件夹" || true
+        git push origin main 
