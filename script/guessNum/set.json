@@ -1,18 +1,6 @@
 {
-    "packaging_platform": "pyinstaller",
-    "python_version": "3.10",
-    "python_dependencies": [],
-    "special_parameters": {
-        "pyinstaller": {
-            "onefile": true,
-            "name": "myapp",
-            "add_data": [
-                {
-                    "src": "data_folder",
-                    "dest": "data"
-                }
-            ],
-            "hidden_imports": []
-        }
-    }
+  "packaging_platform": "pyinstaller",
+  "python_version": "3.10",
+  "python_dependencies": ["requests", "numpy"],
+  "command": "pyinstaller gueesNum.py --onefile"
 }
