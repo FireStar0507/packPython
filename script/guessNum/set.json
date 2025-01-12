@@ -1,6 +1,6 @@
 {
   "packaging_platform": "pyinstaller",
   "python_version": "3.10",
-  "python_dependencies": ["requests", "numpy"],
-  "command": "pyinstaller gueesNum.py --onefile"
+  "python_dependencies": [],
+  "command": "pyinstaller guessNum.py --onefile"
 }
